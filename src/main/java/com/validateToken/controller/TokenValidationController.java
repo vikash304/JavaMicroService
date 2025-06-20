@@ -1,22 +1,46 @@
 package com.validateToken.controller;
 
-import org.springframework.web.bind.annotation.GetMapping;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-import java.security.Principal;
+import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 @RestController
-public class HelloController {
+@RestController
+public class TokenValidationController {
 
-    // open endpoint
-    @GetMapping("/public/ping")
-    public String ping() {
-        return "pong";
+    private final WebClient webClient;
+    private final String userInfoUri;
+
+    public TokenValidationController(
+            WebClient.Builder webClientBuilder,
+            @Value("${cognito.user-info-uri}") String userInfoUri
+    ) {
+        this.webClient    = webClientBuilder.build();
+        this.userInfoUri = userInfoUri;
     }
 
-    // secured endpoint
-    @GetMapping("/private/whoami")
-    public String whoami(Principal principal) {
-        // principal.getName() is the Cognito username (sub or cognito:username)
-        return "Hello, " + principal.getName();
+    @PostMapping("/validate")
+    public Mono<ResponseEntity<?>> validate(@RequestHeader("Authorization") String auth) {
+        if (!auth.startsWith("Bearer ")) {
+            return Mono.just(ResponseEntity.badRequest().body("Missing Bearer token"));
+        }
+        return webClient
+                .get()
+                .uri(userInfoUri)
+                .header(HttpHeaders.AUTHORIZATION, auth)
+                .retrieve()
+                .toEntity(JsonNode.class)
+                .map(resp -> ResponseEntity.ok(Map.of(
+                        "active", true,
+                        "userInfo", resp.getBody()
+                )))
+                .onErrorResume(x -> Mono.just(ResponseEntity.status(401)
+                        .body(Map.of("active", false, "error", x.getMessage()))));
     }
 }
