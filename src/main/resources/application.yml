@@ -1,13 +1,9 @@
-logging.level.org.springframework.security.oauth2.server.resource: DEBUG
-cognito:
-  user-info-uri: https://ap-south-1pq0du8sga.auth.ap-south-1.amazoncognito.com/oauth2/userInfo
 spring:
   security:
     oauth2:
       resourceserver:
         jwt:
-          # tells Spring where to discover issuer, jwk-set URI, etc.
-          issuer-uri: https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_YOUR_POOL_ID
-          # optional tighter audience check; your App-client ID
-          audience: YOUR_APP_CLIENT_ID
+          issuerUri: https://cognito-idp.ap-south-1.amazonaws.com/ap-south-1_pQ0Du8sGa
 
+server:
+  port: 8082
